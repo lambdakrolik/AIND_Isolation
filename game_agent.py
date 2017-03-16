@@ -7,6 +7,7 @@ You must test your agent's strength against a set of agents with known
 relative strength using tournament.py and include the results in your report.
 """
 import random
+import isolation.isolation
 
 
 class Timeout(Exception):
@@ -38,8 +39,14 @@ def custom_score(game, player):
     """
 
     # TODO: finish this function!
-    raise NotImplementedError
-
+    """
+    if maximizing_player is False and len(move_board.get_legal_moves()) < leadingmovevalue:
+        leadingmove = m
+        leadingmovevalue = len(move_board.get_legal_moves())
+    elif maximizing_player is True and len(move_board.get_legal_moves()) > leadingmovevalue:
+        leadingmove = m
+        leadingmovevalue = len(move_board.get_legal_moves())
+"""
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -70,6 +77,7 @@ class CustomPlayer:
         positive value large enough to allow the function to return before the
         timer expires.
     """
+
 
     def __init__(self, search_depth=3, score_fn=custom_score,
                  iterative=True, method='minimax', timeout=10.):
@@ -117,18 +125,22 @@ class CustomPlayer:
         """
 
         self.time_left = time_left
-
-        # TODO: finish this function!
+        bestmove = (0,0)
+        bestmovevalue = float("-inf")
 
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
+        if len(legal_moves) == 0:
+            bestmove = (-1, -1)
+            return bestmove
 
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
+            (bestmovevalue, bestmove) = self.minimax(game, 1, True)
             pass
 
         except Timeout:
@@ -136,7 +148,44 @@ class CustomPlayer:
             pass
 
         # Return the best move from the last completed search iteration
-        raise NotImplementedError
+        print ("Best Move ", bestmove)
+        return bestmove
+
+    def mingame(self, game, depth_limit, current_level):
+        movesavailable = game.get_legal_moves()
+        leadingmovevalue = float("inf")
+        #print("MOVES AT MINGAME", movesavailable, "CURRENT LEVEL ", current_level, " FOR DEPTH ", depth_limit)
+        if (depth_limit - current_level) > 0:
+            for m in movesavailable:
+                # Evaluate each move for its value
+                move_board = game.forecast_move(m)
+                board_score = self.maxgame(move_board, depth_limit, current_level + 1)
+                if board_score < leadingmovevalue:
+                    leadingmovevalue = board_score
+        else:
+            for m in movesavailable:
+                if self.score(game, game.inactive_player) < leadingmovevalue:
+                    leadingmovevalue = self.score(game, game.inactive_player)
+        #print("New best move from min: ", leadingmovevalue)
+        return leadingmovevalue
+
+    def maxgame(self, game, depth_limit, current_level):
+        movesavailable = game.get_legal_moves()
+        leadingmovevalue = float("-inf")
+        #print("MOVES AT MAXGAME", movesavailable, "ITER REMAINING ", current_level)
+        if (depth_limit - current_level) > 0:
+            for m in movesavailable:
+                # Evaluate each move for its value
+                move_board = game.forecast_move(m)
+                board_score = self.mingame(move_board, depth_limit, current_level + 1)
+                if board_score > leadingmovevalue:
+                    leadingmovevalue = board_score
+        else:
+            for m in movesavailable:
+                if self.score(game, game.active_player) > leadingmovevalue:
+                    leadingmovevalue = self.score(game, game.active_player)
+
+        return leadingmovevalue
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -172,8 +221,32 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        #Find all available legal moves
+        movesavailable=game.get_legal_moves()
+        leadingmove = (-1, -1)
+        leadingmovevalue = float("-inf")
+
+        #print("MOVES ", movesavailable, " at depth ", depth)
+
+        #If we need to go beyond one, call the minmax recursion
+        if depth == 1:
+            for m in movesavailable:
+                move_board = game.forecast_move(m)
+                if self.score(move_board, game.active_player) > leadingmovevalue:
+                    leadingmovevalue = self.score(move_board, game.active_player)
+                    leadingmove = m
+        else:
+            for m in movesavailable:
+                move_board = game.forecast_move(m)
+                board_score = self.mingame(move_board, depth, 1)
+                if board_score > leadingmovevalue:
+                    leadingmove = m
+                    leadingmovevalue = board_score
+
+        print ("BEST MOVE IS ", leadingmove, " WITH VALUE ", leadingmovevalue)
+        return leadingmovevalue, leadingmove
+
+
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -217,4 +290,31 @@ class CustomPlayer:
             raise Timeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        # Find all available legal moves
+        movesavailable = game.get_legal_moves()
+        print("MOVES ", movesavailable)
+
+        # At each level, starting with the max search depth, check which move has highest
+        # value of the utility function. Check the child branch values and choose the highest.
+        # If there are no child branches, return your own value.
+        # Recurse through the tree in this way.
+        if depth == 1:
+            leadingmove = movesavailable[0]
+            leadingmovevalue = 0;
+            if maximizing_player == False:
+                leadingmovevalue = float("-inf")
+            else:
+                leadingmovevalue = float("inf")
+
+            for m in movesavailable:
+                # Evaluate each move for its value
+                move_board = game.forecast_move(m)
+
+                if maximizing_player == False and len(move_board.get_legal_moves()) < leadingmovevalue:
+                    leadingmove = m
+                elif maximizing_player == True and len(move_board.get_legal_moves()) > leadingmovevalue:
+                    leadingmove = m
+            return leadingmovevalue, leadingmove
+        else:
+            for m in movesavailable:
+                alphabeta(self, game.forecast_move(m), depth - 1, alpha, beta, not maximizing_player)
