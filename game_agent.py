@@ -247,6 +247,52 @@ class CustomPlayer:
         return leadingmovevalue, leadingmove
 
 
+    def alphabeta_mingame(self, game, depth_limit, current_level, alpha, beta):
+        movesavailable = game.get_legal_moves()
+        leadingmovevalue = float("inf")
+        leadingmove = (-1, -1)
+        if (depth_limit - current_level) > 0:
+            for m in movesavailable:
+                # Evaluate each move for its value
+                move_board = game.forecast_move(m)
+                move_x, board_score = self.alphabeta_maxgame(move_board, depth_limit, current_level + 1, alpha, beta)
+                if board_score < leadingmovevalue:
+                    leadingmovevalue = board_score
+                    leadingmove = m
+                if leadingmovevalue <= alpha:
+                    return m, leadingmovevalue
+                if leadingmovevalue < beta:
+                    beta = leadingmovevalue
+        else:
+            for m in movesavailable:
+                if self.score(game, game.inactive_player) < leadingmovevalue:
+                    leadingmovevalue = self.score(game, game.inactive_player)
+                    leadingmove = m
+        return leadingmove, leadingmovevalue
+
+    def alphabeta_maxgame(self, game, depth_limit, current_level, alpha, beta):
+        movesavailable = game.get_legal_moves()
+        leadingmovevalue = float("-inf")
+        leadingmove = (-1, -1)
+        if (depth_limit - current_level) > 0:
+            for m in movesavailable:
+                # Evaluate each move for its value
+                move_board = game.forecast_move(m)
+                move_x, board_score = self.alphabeta_mingame(move_board, depth_limit, current_level + 1, alpha, beta)
+                if board_score > leadingmovevalue:
+                    leadingmovevalue = board_score
+                    leadingmove = m
+                if leadingmovevalue >= beta:
+                        return m, leadingmovevalue
+                if leadingmovevalue > alpha:
+                    alpha = leadingmovevalue
+        else:
+            for m in movesavailable:
+                if self.score(game, game.active_player) > leadingmovevalue:
+                    leadingmove = m
+                    leadingmovevalue = self.score(game, game.active_player)
+
+        return leadingmove, leadingmovevalue
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -289,32 +335,19 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        # Find all available legal moves
-        movesavailable = game.get_legal_moves()
-        print("MOVES ", movesavailable)
+        #Find all available legal moves
+        movesavailable=game.get_legal_moves()
+        leadingmove = (-1, -1)
+        leadingmovevalue = float("-inf")
 
-        # At each level, starting with the max search depth, check which move has highest
-        # value of the utility function. Check the child branch values and choose the highest.
-        # If there are no child branches, return your own value.
-        # Recurse through the tree in this way.
+        #If we need to go beyond one, call the minmax recursion
         if depth == 1:
-            leadingmove = movesavailable[0]
-            leadingmovevalue = 0;
-            if maximizing_player == False:
-                leadingmovevalue = float("-inf")
-            else:
-                leadingmovevalue = float("inf")
-
             for m in movesavailable:
-                # Evaluate each move for its value
                 move_board = game.forecast_move(m)
-
-                if maximizing_player == False and len(move_board.get_legal_moves()) < leadingmovevalue:
+                if self.score(move_board, game.active_player) > leadingmovevalue:
+                    leadingmovevalue = self.score(move_board, game.active_player)
                     leadingmove = m
-                elif maximizing_player == True and len(move_board.get_legal_moves()) > leadingmovevalue:
-                    leadingmove = m
-            return leadingmovevalue, leadingmove
         else:
-            for m in movesavailable:
-                alphabeta(self, game.forecast_move(m), depth - 1, alpha, beta, not maximizing_player)
+            leadingmove, leadingmovevalue = self.alphabeta_maxgame(game, depth, 0, float("-inf"), float("inf"))
+
+        return leadingmovevalue, leadingmove
