@@ -39,14 +39,7 @@ def custom_score(game, player):
     """
 
     # TODO: finish this function!
-    """
-    if maximizing_player is False and len(move_board.get_legal_moves()) < leadingmovevalue:
-        leadingmove = m
-        leadingmovevalue = len(move_board.get_legal_moves())
-    elif maximizing_player is True and len(move_board.get_legal_moves()) > leadingmovevalue:
-        leadingmove = m
-        leadingmovevalue = len(move_board.get_legal_moves())
-"""
+
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -140,11 +133,24 @@ class CustomPlayer:
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            (bestmovevalue, bestmove) = self.minimax(game, 1, True)
+            current_depth = 1
+            depth_limit = float("inf")
+            if self.iterative is False:
+                depth_limit = 1
+
+            while current_depth <= depth_limit:
+                if self.method is 'minimax':
+                    print("Iterative deepening: depth ", current_depth)
+                    (bestmovevalue, bestmove) = self.minimax(game, current_depth, True)
+                elif self.method is 'alphabeta':
+                    (bestmovevalue, bestmove) = self.alphabeta(game, current_depth, True)
+                current_depth = current_depth + 1
             pass
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
+            print("Best Move IN TIMEOUT ", bestmove)
+            return bestmove
             pass
 
         # Return the best move from the last completed search iteration
@@ -152,9 +158,13 @@ class CustomPlayer:
         return bestmove
 
     def mingame(self, game, depth_limit, current_level):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            print("MINGAME timed out at depth ", current_level)
+            raise Timeout()
+
         movesavailable = game.get_legal_moves()
         leadingmovevalue = float("inf")
-        #print("MOVES AT MINGAME", movesavailable, "CURRENT LEVEL ", current_level, " FOR DEPTH ", depth_limit)
+        print("MOVES AT MINGAME", movesavailable, "CURRENT LEVEL ", current_level, " FOR DEPTH ", depth_limit)
         if (depth_limit - current_level) > 0:
             for m in movesavailable:
                 # Evaluate each move for its value
@@ -164,15 +174,23 @@ class CustomPlayer:
                     leadingmovevalue = board_score
         else:
             for m in movesavailable:
-                if self.score(game, game.inactive_player) < leadingmovevalue:
-                    leadingmovevalue = self.score(game, game.inactive_player)
-        #print("New best move from min: ", leadingmovevalue)
+                if self.time_left() < self.TIMER_THRESHOLD:
+                    print("MAXGAME timed out at depth ", current_level)
+                    raise Timeout()
+                current_score = self.score(game, game.inactive_player)
+                if current_score < leadingmovevalue:
+                    leadingmovevalue = current_score
+        print("New best move from min: ", leadingmovevalue)
         return leadingmovevalue
 
     def maxgame(self, game, depth_limit, current_level):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            print("MAXGAME timed out at depth ", current_level)
+            raise Timeout()
+
         movesavailable = game.get_legal_moves()
         leadingmovevalue = float("-inf")
-        #print("MOVES AT MAXGAME", movesavailable, "ITER REMAINING ", current_level)
+        print("MOVES AT MAXGAME", movesavailable, "ITER REMAINING ", current_level)
         if (depth_limit - current_level) > 0:
             for m in movesavailable:
                 # Evaluate each move for its value
@@ -182,9 +200,14 @@ class CustomPlayer:
                     leadingmovevalue = board_score
         else:
             for m in movesavailable:
-                if self.score(game, game.active_player) > leadingmovevalue:
-                    leadingmovevalue = self.score(game, game.active_player)
+                if self.time_left() < self.TIMER_THRESHOLD:
+                    print("MAXGAME timed out at depth ", current_level)
+                    raise Timeout()
+                current_score = self.score(game, game.active_player)
+                if current_score > leadingmovevalue:
+                    leadingmovevalue = current_score
 
+        print("New best move from max: ", leadingmovevalue)
         return leadingmovevalue
 
     def minimax(self, game, depth, maximizing_player=True):
@@ -219,6 +242,7 @@ class CustomPlayer:
                 evaluation function directly.
         """
         if self.time_left() < self.TIMER_THRESHOLD:
+            print("MINIMAX timed out at depth ", depth)
             raise Timeout()
 
         #Find all available legal moves
@@ -248,6 +272,9 @@ class CustomPlayer:
 
 
     def alphabeta_mingame(self, game, depth_limit, current_level, alpha, beta):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise Timeout()
+
         movesavailable = game.get_legal_moves()
         leadingmovevalue = float("inf")
         leadingmove = (-1, -1)
@@ -271,6 +298,9 @@ class CustomPlayer:
         return leadingmove, leadingmovevalue
 
     def alphabeta_maxgame(self, game, depth_limit, current_level, alpha, beta):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise Timeout()
+
         movesavailable = game.get_legal_moves()
         leadingmovevalue = float("-inf")
         leadingmove = (-1, -1)
